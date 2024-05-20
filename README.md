@@ -36,7 +36,7 @@ The script offers a command line interface with somehow self-describing argument
       --ascii               Convert for all ascii characters (overrides -c and -C)
       --font FONT           Define Font Name to be processed. Name should include modifier like Bold or Italic. If none
                             is given, all fonts in folder will be processed.
-      -s {8,24,32,40,48,56,64,all}, --fontsize {8,24,32,40,48,56,64,all}
+      -s {8,12,16,24,32,40,48,56,64,all}, --fontsize {8,12,16,24,32,40,48,56,64,all}
                             Fontsize (Fontheight) in pixels. Default: 32
       --variable_width      Variable width of characters.
       --progmem             C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in
