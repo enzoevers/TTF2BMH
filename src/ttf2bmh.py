@@ -142,7 +142,7 @@ def main():
             Font = fm.decode('utf-8')
             Font = re.sub('\x00','',Font)
 
-            output_bmh_folder = os.path.join(output_folder, Font)
+            output_bmh_folder = os.path.join(output_folder, Font.replace(' ', '_'))
             if not (os.path.exists(output_bmh_folder)):
                 os.mkdir(output_bmh_folder)
 
@@ -161,7 +161,7 @@ def main():
                     yoffset = font_yoffsets[height_idx]
 
                 # Filename Definitions
-                filename = Font + '_' + str(height) # General Filename
+                filename = Font.replace(' ', '_') + '_' + str(height) # General Filename
                 h_filename = os.path.join(output_bmh_folder, filename + '.h') # Outputfile for font
                 png_filename = os.path.join(output_bmh_folder, filename + '.png') # Outputfile for font
 
