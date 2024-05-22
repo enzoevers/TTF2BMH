@@ -186,10 +186,13 @@ def main():
                     # Calculate byte arrays and write to file
 
                     if(variable_width):
-                        # TODO: Fix zero with chars like the space ' '
                         [zero_col_cnt_left, zero_col_cnt_right] = calculate_char_width(image, width, height)
                         char_width = width - zero_col_cnt_right - zero_col_cnt_left
-                        x_offset = zero_col_cnt_left
+                        if(char_width > 0):
+                            x_offset = zero_col_cnt_left
+                        else:
+                            char_width = 1
+                            x_offset = 0
                     else:
                         char_width = width
                         x_offset = 0
@@ -372,6 +375,8 @@ def write_bmh_head(h_filename, Font):
 
     outfile.write("#pragma once\n\n")
 
+    outfile.write("#include <stdint.h>\n\n")
+
     outfile.write("// Header File for characters\n")
     outfile.write("// Generated with TTF2BMH\n")
     outfile.write("// Font " +  Font + "\n")
@@ -383,14 +388,14 @@ def write_bmh_head(h_filename, Font):
 def write_bmh_char(outfile, char, dot_array, progmem):
     # C Type declaration strings
     # Adjust for different MCU/compilers
-    C_declaration_0 = 'const char bitmap_'
+    C_declaration_0 = 'const uint8_t bitmap_'
     if(progmem):
         C_declaration_1 = '[] PROGMEM = {'
     else:
         C_declaration_1 = '[] = {'
 
-    dot_array_hex_string = [bin(int(value)) for value in dot_array]
-    C_mem_array = (','.join(dot_array_hex_string))
+    dot_array_string = [bin(int(value)) for value in dot_array]
+    C_mem_array = (','.join(dot_array_string))
     C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'}; // \'' + char + '\'\n'
 
     #print(C_printline)
@@ -399,7 +404,7 @@ def write_bmh_char(outfile, char, dot_array, progmem):
 #---------------------------------------------------------------------------------------
 # Write BMH Tail and close file
 def write_bmh_tail(outfile, width_array, character_line, height):
-    C_char_width_0 = 'const char char_width[] = {'
+    C_char_width_0 = 'const uint8_t char_width[] = {'
     C_char_width_1 = (','.join(width_array))
     C_char_width_2 = '};\n'
 
@@ -408,11 +413,11 @@ def write_bmh_tail(outfile, width_array, character_line, height):
     C_addr_array = []
     C_available_chars_array = []
     for char in character_line:
-        C_addr_array.append('&bitmap_' + str(ord(char)))
+        C_addr_array.append('&bitmap_' + str(ord(char)) + "[0]")
         C_available_chars_array.append(str(ord(char)))
 
     C_addr  = (','.join(C_addr_array))
-    C_address_declaration_1 = "const char* char_addr[] = {"
+    C_address_declaration_1 = "const uint8_t* char_addr[] = {"
     C_address_declaration_2 = "};\n"
 
     outfile.write(C_address_declaration_1 + C_addr + C_address_declaration_2)
@@ -423,11 +428,11 @@ def write_bmh_tail(outfile, width_array, character_line, height):
 
     outfile.write(C_available_chars_declaration_1 + C_available_chars + C_available_chars_declaration_2)
     
-    outfile.write("const char char_count = " + str(len(character_line)) + ";\n")
-    outfile.write("const char font_size = " + str(height) + ";\n")
+    outfile.write("const uint8_t char_count = " + str(len(character_line)) + ";\n")
+    outfile.write("const uint8_t font_size = " + str(height) + ";\n")
 
     (bytes_in_height, top_padding) = get_y_bytes_and_top_padding(height)
-    outfile.write("const char top_padding = " + str(top_padding) + ";\n")
+    outfile.write("const uint8_t top_padding = " + str(top_padding) + ";\n")
 
     outfile.close()
 
