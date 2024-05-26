@@ -62,6 +62,7 @@ def main():
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 1.5)')
+    parser.add_argument('--struct', default=False, action='store_true',help='Wrap de generated fonts data in a struct')
     args = parser.parse_args()
 
     if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
@@ -76,6 +77,7 @@ def main():
     else :
         progmem = args.progmem
         print_ascii = args.print_ascii
+        create_struct = args.struct
         # Folder to iterate on
         ttf_searchfolder = args.ttf_folder
         output_folder = args.output_folder
@@ -131,6 +133,9 @@ def main():
         # Start logging
         logfile = logfile_open(output_folder)
 
+        if create_struct:
+            write_bmh_struct_header(os.path.join(output_folder, 'BmhFont.h'))
+
         # Main Loop
         for ttf_file in TTF_FILES:
             # Generate and check file paths and
@@ -161,9 +166,9 @@ def main():
                     yoffset = font_yoffsets[height_idx]
 
                 # Filename Definitions
-                filename = Font.replace(' ', '_') + '_' + str(height) # General Filename
-                h_filename = os.path.join(output_bmh_folder, filename + '.h') # Outputfile for font
-                png_filename = os.path.join(output_bmh_folder, filename + '.png') # Outputfile for font
+                formatted_font_name = Font.replace(' ', '_') + '_' + str(height) # General Filename
+                h_filename = os.path.join(output_bmh_folder, formatted_font_name + '.h') # Outputfile for font
+                png_filename = os.path.join(output_bmh_folder, formatted_font_name + '.png') # Outputfile for font
 
                 # define PILfont
                 size = [width, height]
@@ -175,7 +180,7 @@ def main():
                 PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
 
                 # Open BMH file and start writing
-                outfile = write_bmh_head(h_filename, Font)
+                outfile = write_bmh_head(h_filename, formatted_font_name, create_struct)
 
                 for char in chars:
                     # Create pixel image with PIL
@@ -200,19 +205,19 @@ def main():
                     width_array.append(str(char_width))
                     dot_array = get_pixel_byte(image, height, char_width, x_offset)
 
-                    write_bmh_char(outfile, char, dot_array, progmem)
+                    write_bmh_char(outfile, char, dot_array, progmem, create_struct)
                     if(print_ascii):
                         print(char + ":")
                         #print_char(image, height, char_width, x_offset)
                         print_char_from_h_file(dot_array, char_width)
 
                 # write tail and close bmh file
-                write_bmh_tail(outfile, width_array, character_line, height)
+                write_bmh_tail(outfile, width_array, character_line, height, formatted_font_name, create_struct)
                 # write Image picture with all characters
                 write_pic_file(character_line, PILfont, width, height, png_filename)
                 if(len(TTF_FILES)<20):
-                    print(filename + '.h written')
-                logfile_append(logfile, filename)
+                    print(formatted_font_name + '.h written')
+                logfile_append(logfile, formatted_font_name)
 
         #print('-------------------------------------------------------------------------')
         print("TTF2BMH Finished")
@@ -369,26 +374,52 @@ def search_ttf_folder(ttf_searchfolder):
     return TTF_FILES
 
 #---------------------------------------------------------------------------------------
-def write_bmh_head(h_filename, Font):
-# Process BMF array and create header file to be used with any C compiler
+def write_bmh_struct_header(h_filename):
     outfile = open(h_filename,"w+")
 
     outfile.write("#pragma once\n\n")
 
     outfile.write("#include <stdint.h>\n\n")
 
+    outfile.write("struct BmhFont {\n")
+
+    outfile.write("\tconst uint8_t* char_width;\n")
+    outfile.write("\tconst uint8_t** char_addr;\n")
+    outfile.write("\tconst char* available_chars;\n")
+    outfile.write("\tconst uint8_t char_count;\n")
+    outfile.write("\tconst uint8_t font_size;\n")
+    outfile.write("\tconst uint8_t top_padding;\n")
+
+    outfile.write("};\n")
+
+    outfile.close()
+
+#---------------------------------------------------------------------------------------
+def write_bmh_head(h_filename, formatted_font_name, create_struct):
+# Process BMF array and create header file to be used with any C compiler
+    outfile = open(h_filename,"w+")
+
+    outfile.write("#pragma once\n\n")
+
+    if create_struct:
+        outfile.write("#include \"../BmhFont.h\"\n\n")
+    else:
+        outfile.write("#include <stdint.h>\n\n")
+
     outfile.write("// Header File for characters\n")
     outfile.write("// Generated with TTF2BMH\n")
-    outfile.write("// Font " +  Font + "\n")
+    outfile.write("namespace " +  formatted_font_name + " {\n\n")
+
 
     return outfile
 
 #---------------------------------------------------------------------------------------
 #
-def write_bmh_char(outfile, char, dot_array, progmem):
+def write_bmh_char(outfile, char, dot_array, progmem, create_struct):
     # C Type declaration strings
     # Adjust for different MCU/compilers
     C_declaration_0 = 'const uint8_t bitmap_'
+
     if(progmem):
         C_declaration_1 = '[] PROGMEM = {'
     else:
@@ -403,7 +434,7 @@ def write_bmh_char(outfile, char, dot_array, progmem):
 
 #---------------------------------------------------------------------------------------
 # Write BMH Tail and close file
-def write_bmh_tail(outfile, width_array, character_line, height):
+def write_bmh_tail(outfile, width_array, character_line, height, formatted_font_name, create_struct):
     C_char_width_0 = 'const uint8_t char_width[] = {'
     C_char_width_1 = (','.join(width_array))
     C_char_width_2 = '};\n'
@@ -427,13 +458,24 @@ def write_bmh_tail(outfile, width_array, character_line, height):
     C_available_chars_declaration_2 = "};\n"
 
     outfile.write(C_available_chars_declaration_1 + C_available_chars + C_available_chars_declaration_2)
-    
+
     outfile.write("const uint8_t char_count = " + str(len(character_line)) + ";\n")
     outfile.write("const uint8_t font_size = " + str(height) + ";\n")
 
     (bytes_in_height, top_padding) = get_y_bytes_and_top_padding(height)
     outfile.write("const uint8_t top_padding = " + str(top_padding) + ";\n")
 
+    if create_struct:
+        outfile.write("\nconst BmhFont font_data = {\n")
+        outfile.write("\t.char_width = char_width,\n")
+        outfile.write("\t.char_addr = char_addr,\n")
+        outfile.write("\t.available_chars = available_chars,\n")
+        outfile.write("\t.char_count = char_count,\n")
+        outfile.write("\t.font_size = font_size,\n")
+        outfile.write("\t.top_padding = top_padding\n")
+        outfile.write("};\n")
+
+    outfile.write("\n}; // End " + formatted_font_name + "\n")
     outfile.close()
 
 #---------------------------------------------------------------------------------------

@@ -43,6 +43,7 @@ The script offers a command line interface with somehow self-describing argument
                             porgram memory for AVR Microcontrollers with limited Flash or EEprom
       -p, --print_ascii     Print each character as ASCII Art on commandline, for debugging
       --square              Make the font square instead of height by (height * 0.75)
+      --struct              Wrap de generated fonts data in a struct
 
 The program can also be run directly on Linux systems by doing `./ttf2bmh.py`
 
